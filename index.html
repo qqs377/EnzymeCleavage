@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protein Cleavage Site Highlighter</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0e1117;
+            --surface: #161b27;
+            --surface2: #1e2535;
+            --border: #2a3347;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --accent: #38bdf8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 32px 16px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 36px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 14px;
+            margin-top: 6px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 22px;
+            margin-bottom: 20px;
+        }
+
+        .card-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            color: var(--text);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            resize: vertical;
+            min-height: 110px;
+            line-height: 1.6;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .enzyme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+            gap: 8px;
+        }
+
+        .enzyme-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .enzyme-option:hover { background: #242d3f; }
+
+        .enzyme-option input[type="checkbox"] {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.15s, border-color 0.15s;
+            position: relative;
+        }
+
+        .enzyme-option input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: -2px;
+            left: 1px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #0e1117;
+        }
+
+        .enzyme-option label {
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text);
+        }
+
+        .enzyme-option .badge {
+            margin-left: auto;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        .sequence-display {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 18px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 15px;
+            line-height: 2.2;
+            word-break: break-all;
+            min-height: 100px;
+            white-space: pre-wrap;
+            letter-spacing: 0.04em;
+        }
+
+        .hl {
+            border-radius: 3px;
+            padding: 1px 3px;
+            font-weight: 700;
+            color: #0e1117;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--muted);
+            padding: 40px 20px;
+            font-style: italic;
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .stat-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .stat-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .legend-swatch {
+            width: 20px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+        .seq-length {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 10px;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 6px 0 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🧬 Protein Cleavage Site Highlighter</h1>
+        <p class="subtitle">Visualize protease cleavage sites in protein sequences — each enzyme rendered in a distinct color</p>
+    </header>
+
+    <div class="card">
+        <div class="card-label">Protein Sequence</div>
+        <textarea id="sequence" placeholder="Enter amino acid sequence (single-letter code)&#10;e.g., MKTAYIAKQRQISFVKSHFSRQ..."></textarea>
+    </div>
+
+    <div class="card">
+        <div class="card-label">Select Proteases</div>
+        <div class="section-divider"></div>
+        <div class="enzyme-grid" id="enzymeGrid"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-label">Highlighted Sequence</div>
+        <div id="result" class="sequence-display">
+            <div class="empty-state">Enter a sequence and select one or more proteases to visualize cleavage sites</div>
+        </div>
+        <div id="seqLen"></div>
+        <div id="legend" class="legend"></div>
+        <div id="stats" class="stats-grid"></div>
+    </div>
+</div>
+
+<script>
+const enzymes = {
+    'Trypsin':       { residues: ['K','R'],         cleaveBefore: false, description: 'after K, R',       color: '#f87171' },
+    'Lys-C':         { residues: ['K'],              cleaveBefore: false, description: 'after K',          color: '#fb923c' },
+    'Arg-C':         { residues: ['R'],              cleaveBefore: false, description: 'after R',          color: '#facc15' },
+    'Glu-C':         { residues: ['E'],              cleaveBefore: false, description: 'after E',          color: '#a3e635' },
+    'Asp-N':         { residues: ['D'],              cleaveBefore: true,  description: 'before D',         color: '#34d399' },
+    'Chymotrypsin':  { residues: ['F','Y','W'],      cleaveBefore: false, description: 'after F, Y, W',   color: '#22d3ee' },
+    'Pepsin':        { residues: ['F','L'],          cleaveBefore: false, description: 'after F, L',      color: '#60a5fa' },
+    'Elastase':      { residues: ['A','V','S','G'],  cleaveBefore: false, description: 'after A, V, S, G',color: '#818cf8' },
+    'Thermolysin':   { residues: ['L','I','V'],      cleaveBefore: true,  description: 'before L, I, V',  color: '#c084fc' },
+    'Caspase-3':     { residues: ['D'],              cleaveBefore: false, description: 'after D (DEVD)',   color: '#f472b6' },
+    'Thrombin':      { residues: ['R'],              cleaveBefore: false, description: 'after R',         color: '#fb7185' },
+    'Factor Xa':     { residues: ['R'],              cleaveBefore: false, description: 'after R (IEGR)',  color: '#e879f9' },
+};
+
+// Build checkboxes
+const grid = document.getElementById('enzymeGrid');
+Object.entries(enzymes).forEach(([name, info]) => {
+    const div = document.createElement('div');
+    div.className = 'enzyme-option';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = `enz_${name}`;
+    cb.value = name;
+    cb.addEventListener('change', render);
+    // Style checkbox checked color
+    cb.addEventListener('change', function() {
+        this.style.background = this.checked ? info.color : '';
+        this.style.borderColor = this.checked ? info.color : '';
+    });
+
+    const lbl = document.createElement('label');
+    lbl.htmlFor = `enz_${name}`;
+    lbl.textContent = name;
+
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = info.residues.join('/');
+
+    // Color indicator dot
+    const dot = document.createElement('span');
+    dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${info.color};flex-shrink:0;margin-left:auto;`;
+
+    div.appendChild(cb);
+    div.appendChild(lbl);
+    div.appendChild(badge);
+    div.appendChild(dot);
+    grid.appendChild(div);
+});
+
+document.getElementById('sequence').addEventListener('input', render);
+
+function render() {
+    const raw = document.getElementById('sequence').value.toUpperCase().replace(/\s/g, '');
+    const selected = Array.from(document.querySelectorAll('#enzymeGrid input:checked')).map(c => c.value);
+
+    const resultDiv = document.getElementById('result');
+    const statsDiv = document.getElementById('stats');
+    const legendDiv = document.getElementById('legend');
+    const seqLenDiv = document.getElementById('seqLen');
+
+    if (!raw || selected.length === 0) {
+        resultDiv.innerHTML = '<div class="empty-state">Enter a sequence and select one or more proteases to visualize cleavage sites</div>';
+        statsDiv.innerHTML = '';
+        legendDiv.innerHTML = '';
+        seqLenDiv.innerHTML = '';
+        return;
+    }
+
+    // Map position -> [{name, color}]
+    const posMap = {};
+    const counts = {};
+
+    selected.forEach(name => {
+        const enz = enzymes[name];
+        counts[name] = 0;
+        enz.residues.forEach(res => {
+            for (let i = 0; i < raw.length; i++) {
+                if (raw[i] === res) {
+                    const key = i;
+                    if (!posMap[key]) posMap[key] = [];
+                    // Avoid duplicate entries from multi-residue enzymes
+                    if (!posMap[key].find(e => e.name === name)) {
+                        posMap[key].push({ name, color: enz.color });
+                        counts[name]++;
+                    }
+                }
+            }
+        });
+    });
+
+    // Build HTML — groups of 10 with space
+    let html = '';
+    for (let i = 0; i < raw.length; i++) {
+        if (i > 0 && i % 10 === 0) html += ' ';
+        const ch = raw[i];
+        if (posMap[i]) {
+            const color = posMap[i][0].color; // use first matching enzyme color
+            const names = [...new Set(posMap[i].map(e => e.name))].join(', ');
+            html += `<span class="hl" style="background:${color}" title="${names} — position ${i+1}">${ch}</span>`;
+        } else {
+            html += ch;
+        }
+    }
+    resultDiv.innerHTML = html;
+
+    // Sequence length
+    seqLenDiv.innerHTML = `<span class="seq-length">📏 ${raw.length} amino acids</span>`;
+
+    // Legend
+    legendDiv.innerHTML = selected.map(name => {
+        const enz = enzymes[name];
+        return `<div class="legend-item">
+            <span class="legend-swatch" style="background:${enz.color}"></span>
+            <span><strong style="color:#e2e8f0">${name}</strong> — cleaves ${enz.description}</span>
+        </div>`;
+    }).join('');
+
+    // Stats chips
+    statsDiv.innerHTML = selected.map(name => {
+        const enz = enzymes[name];
+        return `<div class="stat-chip">
+            <span class="stat-dot" style="background:${enz.color}"></span>
+            <strong>${name}:</strong>&nbsp;${counts[name]} site${counts[name] !== 1 ? 's' : ''}
+        </div>`;
+    }).join('');
+}
+</script>
+</body>
+</html>
